@@ -551,6 +551,7 @@ jobs:
           SOURCE_REF: ${{ env.SOURCE_REF }}
           UPSTREAM_SHA: ${{ env.UPSTREAM_SHA }}
           IPA_NAME: ${{ steps.assets.outputs.ipa_name }}
+          IPA_PATH: ${{ steps.assets.outputs.ipa_path }}
           RELEASE_URL: ${{ steps.publish.outputs.release_url }}
           PAGES_BASE_URL_OVERRIDE: ${{ vars.IOS_OTA_BASE_URL }}
         run: |
@@ -565,14 +566,14 @@ jobs:
           PAGES_BASE_URL="${PAGES_BASE_URL_OVERRIDE:-${DEFAULT_PAGES_BASE_URL}}"
           PAGES_BASE_URL="${PAGES_BASE_URL%/}"
 
-          RELEASE_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}"
-          IPA_URL="${RELEASE_BASE_URL}/${IPA_NAME}"
-
           SITE_PATH="${RUNNER_TEMP}/pages-site"
           LATEST_DIR="${SITE_PATH}/ios/latest"
           SHA_DIR="${SITE_PATH}/ios/${SHORT_SHA}"
           mkdir -p "${LATEST_DIR}" "${SHA_DIR}"
+          cp "${IPA_PATH}" "${LATEST_DIR}/${IPA_NAME}"
+          cp "${IPA_PATH}" "${SHA_DIR}/${IPA_NAME}"
 
+          IPA_URL="${PAGES_BASE_URL}/ios/latest/${IPA_NAME}"
           LATEST_MANIFEST_URL="${PAGES_BASE_URL}/ios/latest/manifest.plist"
           SHA_MANIFEST_URL="${PAGES_BASE_URL}/ios/${SHORT_SHA}/manifest.plist"
           LATEST_OTA_URL="itms-services://?action=download-manifest&url=${LATEST_MANIFEST_URL}"
