@@ -295,6 +295,12 @@ jobs:
             SIGNING_IDENTITY="Apple Distribution"
           fi
 
+          if [ "${EXPORT_METHOD}" = "development" ]; then
+            CODE_SIGN_STYLE="Automatic"
+          else
+            CODE_SIGN_STYLE="Manual"
+          fi
+
           if [ "${BUNDLE_ID}" != "${DEFAULT_BUNDLE_ID}" ]; then
             /usr/libexec/PlistBuddy -c "Set :keychain-access-groups:0 \$(AppIdentifierPrefix)${BUNDLE_ID}" source/Asspp/Asspp.entitlements
           fi
@@ -302,13 +308,18 @@ jobs:
           cat > source/Configuration/Developer.xcconfig <<EOF
           // CI-generated Developer.xcconfig
           DEVELOPMENT_TEAM = ${TEAM_ID}
-          CODE_SIGN_STYLE = Manual
+          CODE_SIGN_STYLE = ${CODE_SIGN_STYLE}
           CODE_SIGN_IDENTITY = ${SIGNING_IDENTITY}
           CODE_SIGN_IDENTITY[sdk=macosx*] = Apple Development
-          PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
-          PROVISIONING_PROFILE = ${PROFILE_UUID}
           PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
           EOF
+
+          if [ "${CODE_SIGN_STYLE}" = "Manual" ]; then
+            cat >> source/Configuration/Developer.xcconfig <<EOF
+          PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
+          PROVISIONING_PROFILE = ${PROFILE_UUID}
+          EOF
+          fi
 
           {
             echo "team_id=${TEAM_ID}"
@@ -346,6 +357,14 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [ "${EXPORT_METHOD}" = "development" ]; then
+            SIGNING_STYLE="automatic"
+            PROVISIONING_PROFILES=""
+          else
+            SIGNING_STYLE="manual"
+            PROVISIONING_PROFILES=$(printf '            <key>provisioningProfiles</key>\n            <dict>\n              <key>%s</key>\n              <string>%s</string>\n            </dict>' "${BUNDLE_ID}" "${PROFILE_NAME}")
+          fi
+
           cat > "${PWD}/build/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -356,14 +375,10 @@ jobs:
             <key>method</key>
             <string>${EXPORT_METHOD}</string>
             <key>signingStyle</key>
-            <string>manual</string>
+            <string>${SIGNING_STYLE}</string>
             <key>teamID</key>
             <string>${TEAM_ID}</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>${BUNDLE_ID}</key>
-              <string>${PROFILE_NAME}</string>
-            </dict>
+          ${PROVISIONING_PROFILES}
             <key>stripSwiftSymbols</key>
             <true/>
             <key>compileBitcode</key>
